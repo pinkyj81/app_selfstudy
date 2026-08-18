@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리 페이지</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+      background: #f8f9fa;
+      color: #1a1a1a;
+      min-height: 100vh;
+    }
+
+    header {
+      background: white;
+      padding: 18px 32px;
+      border-bottom: 1px solid #eee;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .header-title { font-size: 16px; font-weight: 800; color: #111; }
+    .view-link {
+      font-size: 13px; color: #00c896; text-decoration: none;
+      font-weight: 700; padding: 7px 18px;
+      border: 2px solid #00c896; border-radius: 20px;
+    }
+    .view-link:hover { background: #00c896; color: white; }
+
+    main { max-width: 680px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    /* 섹션 카드 */
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 28px 28px 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .card-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 18px;
+    }
+    .card-label {
+      font-size: 11px; font-weight: 700;
+      color: #00c896; letter-spacing: 1.5px; text-transform: uppercase;
+    }
+    .save-badge {
+      font-size: 11px; color: #aaa;
+      display: none;
+    }
+    .save-badge.show { display: inline; }
+
+    /* 입력 필드 */
+    input[type="text"], textarea {
+      width: 100%; border: 1.5px solid #e5e7eb;
+      border-radius: 10px; padding: 12px 16px;
+      font-size: 15px; font-family: inherit;
+      color: #111; outline: none;
+      transition: border-color 0.2s;
+      resize: none;
+    }
+    input[type="text"] { font-weight: 700; font-size: 18px; }
+    input[type="text"]:focus, textarea:focus { border-color: #00c896; }
+    textarea { height: 160px; line-height: 1.8; }
+
+    .btn-save {
+      margin-top: 14px;
+      padding: 11px 28px;
+      background: #00c896; color: white;
+      border: none; border-radius: 25px;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      font-family: inherit; transition: background 0.2s;
+    }
+    .btn-save:hover { background: #00a87e; }
+
+    /* 이미지 업로드 */
+    .upload-zone {
+      border: 2px dashed #d1d5db;
+      border-radius: 14px;
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+    .upload-zone:hover, .upload-zone.drag { border-color: #00c896; background: #f0fdf8; color: #00c896; }
+    .upload-zone .icon { font-size: 36px; margin-bottom: 10px; }
+    .upload-zone input { display: none; }
+
+    /* 등록된 이미지 목록 */
+    .images-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 14px;
+      margin-top: 20px;
+    }
+    .img-item {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #f5f5f5;
+      aspect-ratio: 9/16;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .img-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .img-del {
+      position: absolute; top: 6px; right: 6px;
+      background: rgba(0,0,0,0.6); color: white;
+      border: none; border-radius: 50%;
+      width: 26px; height: 26px; font-size: 14px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .img-item:hover .img-del { opacity: 1; }
+
+    /* 업로드 진행 표시 */
+    .upload-progress {
+      margin-top: 12px; font-size: 13px; color: #888;
+      display: none;
+    }
+    .upload-progress.show { display: block; }
+
+    /* 토스트 */
+    #toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #111; color: white;
+      padding: 12px 24px; border-radius: 30px;
+      font-size: 14px; font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+      transition: transform 0.3s ease;
+      z-index: 999; white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="header-title">✏️ 소개 페이지 관리</span>
+  <a href="/" class="view-link">← 소개 페이지 보기</a>
+</header>
+
+<main>
+
+  <!-- 1. 제목 -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">① 제목</span>
+    </div>
+    <input type="text" id="input-title" value="{{ data.title }}" placeholder="앱 제목을 입력하세요">
+    <button class="btn-save" onclick="saveInfo()">저장</button>
+  </div>
+
+  <!-- 2. 설명 -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">② 설명</span>
+    </div>
+    <textarea id="input-desc" placeholder="앱 설명을 입력하세요">{{ data.description }}</textarea>
+    <button class="btn-save" onclick="saveInfo()">저장</button>
+  </div>
+
+  <!-- 3. 사진 -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">③ 사진 등록</span>
+    </div>
+
+    <!-- 업로드 영역 -->
+    <label class="upload-zone" id="upload-zone">
+      <div class="icon">📎</div>
+      <div>클릭하거나 파일을 여기에 끌어다 놓으세요</div>
+      <div style="font-size:12px; margin-top:6px;">PNG, JPG, WEBP 지원</div>
+      <input type="file" id="file-input" accept="image/*" multiple onchange="uploadFiles(this.files)">
+    </label>
+    <div class="upload-progress" id="upload-progress">업로드 중...</div>
+
+    <!-- 등록된 이미지 -->
+    <div class="images-grid" id="images-grid">
+      {% for img in data.images %}
+        <div class="img-item" id="item-{{ loop.index0 }}">
+          <img src="/static/images/{{ img }}" alt="{{ img }}">
+          <button class="img-del" onclick="deleteImage('{{ img }}', this)">✕</button>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+  // ── 제목/설명 저장 ────────────────────────────────────────
+  async function saveInfo() {
+    const title = document.getElementById('input-title').value.trim();
+    const desc  = document.getElementById('input-desc').value.trim();
+    if (!title) { toast('❗ 제목을 입력하세요.'); return; }
+
+    const res  = await fetch('/api/save-info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, description: desc })
+    });
+    if (res.ok) toast('✅ 저장되었습니다!');
+    else        toast('❗ 저장 실패');
+  }
+
+  // ── 이미지 업로드 ─────────────────────────────────────────
+  async function uploadFiles(files) {
+    if (!files || !files.length) return;
+    const progress = document.getElementById('upload-progress');
+    progress.classList.add('show');
+
+    for (const file of files) {
+      progress.textContent = `업로드 중: ${file.name}`;
+      const form = new FormData();
+      form.append('image', file);
+      const res  = await fetch('/api/upload-image', { method: 'POST', body: form });
+      const data = await res.json();
+      if (res.ok) addImageItem(data.filename);
+      else        toast('❗ ' + data.error);
+    }
+
+    progress.classList.remove('show');
+    document.getElementById('file-input').value = '';
+    toast(`✅ ${files.length}개 업로드 완료!`);
+  }
+
+  function addImageItem(filename) {
+    const grid = document.getElementById('images-grid');
+    const div  = document.createElement('div');
+    div.className = 'img-item';
+    div.innerHTML = `
+      <img src="/static/images/${filename}?t=${Date.now()}" alt="${filename}">
+      <button class="img-del" onclick="deleteImage('${filename}', this)">✕</button>
+    `;
+    grid.appendChild(div);
+  }
+
+  // ── 이미지 삭제 ────────────────────────────────────────────
+  async function deleteImage(filename, btn) {
+    if (!confirm('이 사진을 삭제하시겠습니까?')) return;
+    const res = await fetch('/api/delete-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename })
+    });
+    if (res.ok) {
+      btn.closest('.img-item').remove();
+      toast('🗑️ 삭제되었습니다.');
+    }
+  }
+
+  // ── 드래그 앤 드롭 ─────────────────────────────────────────
+  const zone = document.getElementById('upload-zone');
+  zone.addEventListener('dragover',  e => { e.preventDefault(); zone.classList.add('drag'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag');
+    uploadFiles(e.dataTransfer.files);
+  });
+
+  // ── 토스트 ────────────────────────────────────────────────
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3000);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>D-day 관리</title>
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --panel: #ffffff;
+      --ink: #1f2430;
+      --muted: #6d7786;
+      --line: #e5eaf2;
+      --blue: #1f77d1;
+      --blue-soft: #eaf3ff;
+      --purple: #6b5ef6;
+      --shadow: 0 16px 32px rgba(17, 24, 39, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: linear-gradient(180deg, #edf2fb 0%, #f5f7fb 100%);
+      font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    .phone {
+      width: 100%;
+      max-width: 420px;
+      min-height: 860px;
+      background: #f7f8fb;
+      border-radius: 30px;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(15, 23, 42, 0.04);
+      overflow: hidden;
+    }
+
+    .screen {
+      padding: 18px 18px 12px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.2;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+    }
+
+    .logout-btn {
+      text-decoration: none;
+      color: #374151;
+      background: rgba(255,255,255,0.7);
+      border: 1px solid rgba(17,24,39,0.08);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .card {
+      background: linear-gradient(180deg, #ffffff 0%, #f3f7ff 100%);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px 16px;
+      box-shadow: 0 10px 20px rgba(52, 72, 110, 0.06);
+      margin-bottom: 16px;
+    }
+
+    .dday-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .form-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #243042;
+    }
+
+    .input {
+      width: 100%;
+      height: 44px;
+      border: 1px solid rgba(17, 24, 39, 0.1);
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 12px;
+      padding: 0 12px;
+      font-size: 15px;
+      color: var(--ink);
+    }
+
+    .save-btn {
+      width: 100%;
+      height: 46px;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(90deg, #3e7af8 0%, #5a5de6 100%);
+      color: white;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+
+    .list-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .dday-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px 14px;
+    }
+
+    .dday-meta {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      gap: 4px;
+    }
+
+    .dday-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #1d2430;
+    }
+
+    .dday-date {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dday-badge {
+      flex-shrink: 0;
+      min-width: 84px;
+      text-align: center;
+      border-radius: 14px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-size: 14px;
+      font-weight: 900;
+      padding: 10px 8px;
+    }
+
+    .delete-btn {
+      border: none;
+      background: transparent;
+      color: #8d94a3;
+      font-size: 20px;
+      cursor: pointer;
+      margin-left: 4px;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 22px 12px;
+      color: var(--muted);
+      font-size: 14px;
+      background: rgba(255,255,255,0.7);
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+    }
+
+    .tabbar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      background: rgba(255,255,255,0.92);
+      border-top: 1px solid rgba(17,24,39,0.05);
+      padding: 12px 8px 18px;
+      margin-top: 18px;
+    }
+
+    .tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: #6b7280;
+      font-size: 11px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .tab .emoji {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .tab.active {
+      color: #1e4e8a;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="screen">
+      <header class="topbar">
+        <h1 class="title">D-day</h1>
+        <a href="/logout" class="logout-btn">로그아웃</a>
+      </header>
+
+      <section class="card">
+        <form method="post" class="dday-form">
+          <label class="form-label" for="dday_title">이벤트 이름</label>
+          <input id="dday_title" name="dday_title" class="input" type="text" placeholder="예: 시험일" required />
+
+          <label class="form-label" for="target_date">날짜</label>
+          <input id="target_date" name="target_date" class="input" type="date" required />
+
+          <button type="submit" class="save-btn">추가</button>
+        </form>
+      </section>
+
+      <section class="list-wrap">
+        {% if items %}
+          {% for item in items %}
+            <div class="dday-item">
+              <div class="dday-meta">
+                <div class="dday-title">{{ item.title }}</div>
+                <div class="dday-date">{{ item.target_date }}</div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <div class="dday-badge">{{ item.badge }}</div>
+                <form method="post" action="{{ url_for('delete_dday_item', item_id=item.id) }}" style="margin:0;">
+                  <button type="submit" class="delete-btn" aria-label="삭제">×</button>
+                </form>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty">등록된 D-day가 없습니다.</div>
+        {% endif %}
+      </section>
+
+      <nav class="tabbar" aria-label="하단 메뉴">
+        <a class="tab" href="/dashboard"><span class="emoji">🏠</span><span>HOME</span></a>
+        <a class="tab" href="/dashboard"><span class="emoji">🗂️</span><span>계획</span></a>
+        <a class="tab active" href="/dday"><span class="emoji">📅</span><span>D-day</span></a>
+        <a class="tab" href="/dashboard"><span class="emoji">👤</span><span>MY</span></a>
+      </nav>
+    </div>
+  </div>
+</body>
+</html>

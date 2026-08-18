@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ data.title }}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Noto Sans KR", "Malgun Gothic", sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+    }
+
+    /* ── 헤더 ── */
+    header {
+      padding: 24px 32px 20px;
+      border-bottom: 1px solid #eee;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .app-name { font-size: 15px; font-weight: 800; color: #00c896; }
+    .admin-link {
+      font-size: 13px; color: #999; text-decoration: none;
+      padding: 6px 16px; border: 1px solid #ddd; border-radius: 20px;
+    }
+    .admin-link:hover { background: #f5f5f5; }
+
+    /* ── 메인 콘텐츠 ── */
+    main { max-width: 860px; margin: 0 auto; padding: 60px 24px 0; }
+
+    /* 제목 */
+    .app-title {
+      font-size: clamp(32px, 5vw, 54px);
+      font-weight: 900;
+      line-height: 1.15;
+      letter-spacing: -1.5px;
+      color: #111;
+      margin-bottom: 28px;
+      word-break: keep-all;
+    }
+
+    /* 구분선 */
+    .divider {
+      width: 48px; height: 4px;
+      background: #00c896; border-radius: 2px;
+      margin-bottom: 28px;
+    }
+
+    /* 설명 */
+    .app-desc {
+      font-size: 17px;
+      line-height: 1.9;
+      color: #444;
+      white-space: pre-wrap;
+      word-break: keep-all;
+      max-width: 640px;
+      margin-bottom: 60px;
+    }
+
+    /* 사진 갤러리 — 전체 너비 */
+    .gallery-section {
+      width: 100vw;
+      margin-left: calc(-50vw + 50%);
+      padding: 60px 0 80px;
+      background: #f8f9fa;
+    }
+    .gallery-label {
+      font-size: 13px; font-weight: 700;
+      color: #999; letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+      max-width: 860px;
+      margin-left: auto; margin-right: auto;
+      padding: 0 24px;
+    }
+    .gallery {
+      display: flex;
+      gap: 20px;
+      overflow-x: auto;
+      padding-bottom: 20px;
+      scroll-snap-type: x mandatory;
+      /* 갤러리 첫 이미지를 제목 왼쪽과 맞춤 */
+      padding-left: max(24px, calc((100vw - 860px) / 2 + 24px));
+      padding-right: 40px;
+    }
+    .gallery::-webkit-scrollbar { height: 6px; }
+    .gallery::-webkit-scrollbar-track { background: #eee; border-radius: 3px; }
+    .gallery::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    .gallery-item {
+      flex-shrink: 0;
+      /* 화면 이미지 수에 따라 자동 크기 조정 */
+      width: clamp(400px, calc((100vw - 160px) / var(--img-count, 5) - 20px), 680px);
+      border-radius: 20px;
+      overflow: hidden;
+      background: white;
+      scroll-snap-align: start;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.10);
+    }
+    .gallery-item img {
+      width: 100%; display: block;
+      object-fit: cover;
+    }
+
+    /* 사진 없을 때 */
+    .no-images {
+      color: #ccc; font-size: 15px;
+      padding: 40px 0;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="app-name">AppPage</span>
+  <a href="/admin" class="admin-link">✏️ 관리</a>
+</header>
+
+<main>
+  <!-- 1. 제목 -->
+  <h1 class="app-title">{{ data.title }}</h1>
+  <div class="divider"></div>
+
+  <!-- 2. 설명 -->
+  <p class="app-desc">{{ data.description }}</p>
+
+  <!-- 3. 사진 -->
+  {% if data.images %}
+    <div class="gallery-section">
+      <div class="gallery-label">SCREENSHOTS</div>
+      <div class="gallery" style="--img-count: {{ data.images | length }}">
+        {% for img in data.images %}
+          <div class="gallery-item">
+            <img src="/static/images/{{ img }}" alt="{{ img }}">
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+    </div>
+  {% else %}
+    <div class="gallery-section">
+      <div class="gallery-label">SCREENSHOTS</div>
+      <p class="no-images">등록된 사진이 없습니다. <a href="/admin">관리 페이지</a>에서 추가하세요.</p>
+    </div>
+  {% endif %}
+</main>
+
+</body>
+</html>

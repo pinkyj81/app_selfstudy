@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>오늘의 학습</title>
+  <style>
+    :root {
+      --bg: #f3f5f8;
+      --panel: #f6f8fb;
+      --ink: #1f2430;
+      --muted: #5f697a;
+      --line: rgba(148, 163, 184, 0.7);
+      --blue: #1c73e8;
+      --blue-soft: rgba(28, 115, 232, 0.08);
+      --green: #36b377;
+      --shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+    }
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 0;
+    }
+    .phone {
+      width: 100%;
+      max-width: 430px;
+      min-height: 100vh;
+      background: #f5f6f9;
+      padding: 14px 14px 24px;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 2px 12px;
+    }
+    .back {
+      text-decoration: none;
+      color: var(--ink);
+      font-size: 34px;
+      line-height: 1;
+      font-weight: 700;
+    }
+    .title {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: -0.05em;
+      font-weight: 900;
+      flex: 1;
+      text-align: center;
+    }
+    .header-box {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #edf3f9;
+      padding: 16px 14px;
+      margin-bottom: 14px;
+    }
+    .today-label {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .today-date {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      margin: 0;
+    }
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .task-item {
+      display: grid;
+      grid-template-columns: 40px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.7);
+      padding: 12px 6px;
+      background: transparent;
+    }
+    .task-no {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--ink);
+      text-align: center;
+    }
+    .task-main {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .subject-pill {
+      display: inline-block;
+      width: fit-content;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--blue-soft);
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .task-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      width: fit-content;
+      margin-top: 4px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(28, 115, 232, 0.06);
+      color: var(--blue);
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid rgba(28, 115, 232, 0.12);
+    }
+    .task-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .task-plan {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .task-check {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      border: 1px solid rgba(15, 23, 42, 0.18);
+      background: rgba(255,255,255,0.6);
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--green);
+    }
+    .empty-state {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #edf3f9;
+      padding: 24px 16px;
+      text-align: center;
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="topbar">
+      <a class="back" href="/dashboard" aria-label="뒤로가기">‹</a>
+      <h1 class="title">오늘의 학습</h1>
+      <div style="width: 28px;"></div>
+    </div>
+
+    <div class="header-box">
+      <div class="today-label">오늘 날짜</div>
+      <p class="today-date">{{ today_date }}</p>
+    </div>
+
+    {% if tasks %}
+      <div class="task-list">
+        {% for task in tasks %}
+          <div class="task-item">
+            <div class="task-no">{{ loop.index }}</div>
+            <div class="task-main">
+              <span class="subject-pill">{{ task.subject }}</span>
+              <div class="task-title">{{ task.task_title }}</div>
+              <div class="task-plan">{{ task.plan_title }}</div>
+              {% if task.link_url %}
+                <a class="task-link" href="{{ task.link_url if task.link_url.startswith('http://') or task.link_url.startswith('https://') else 'https://' + task.link_url }}" target="_blank" rel="noopener noreferrer">🔗 바로가기</a>
+              {% endif %}
+            </div>
+            <div class="task-check">✓</div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        오늘 할당된 학습 계획이 없습니다.<br>
+        새 계획을 추가해보세요.
+      </div>
+    {% endif %}
+  </div>
+</body>
+</html>

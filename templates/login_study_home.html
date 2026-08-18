@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>로그인</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f3f5f7;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #1f2430;
+    }
+    .phone {
+      width: min(100vw, 430px);
+      min-height: 100vh;
+      background: #f7f7f7;
+      border: 1px solid rgba(17,24,39,0.06);
+      box-shadow: 0 12px 24px rgba(17,24,39,0.08);
+      display: flex;
+      flex-direction: column;
+      padding: 32px 20px 20px;
+    }
+    .brand {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .brand-badge {
+      display: inline-flex;
+      width: 56px;
+      height: 56px;
+      border: 2px solid #1d73e8;
+      border-radius: 18px;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      letter-spacing: -0.04em;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid rgba(17, 24, 39, 0.1);
+      border-radius: 22px;
+      padding: 24px 18px 18px;
+      box-shadow: 0 8px 18px rgba(17,24,39,0.04);
+    }
+    .label {
+      display: block;
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    select, input {
+      width: 100%;
+      border: 1px solid rgba(17,24,39,0.18);
+      border-radius: 12px;
+      background: #fff;
+      padding: 14px 16px;
+      font-size: 18px;
+      color: #1f2430;
+      outline: none;
+    }
+    .select-row {
+      margin-bottom: 14px;
+    }
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #7a8596;
+      font-size: 13px;
+      margin: 10px 0 16px;
+    }
+    .divider::before, .divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: rgba(17,24,39,0.12);
+    }
+    .login-btn {
+      width: 100%;
+      border: none;
+      border-radius: 14px;
+      height: 56px;
+      background: linear-gradient(180deg, #1d73e8 0%, #215ec9 100%);
+      color: white;
+      font-size: 22px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .error {
+      margin-top: 12px;
+      color: #d32f2f;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .hint {
+      margin-top: 18px;
+      text-align: center;
+      color: #526070;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="brand">
+      <div class="brand-badge">📚</div>
+      <h1>Study Planner</h1>
+    </div>
+
+    <div class="card">
+      <form method="post" action="/login">
+        <div class="select-row">
+          <label class="label" for="user_name">사용자 선택</label>
+          <select id="user_name" name="user_name">
+            <option value="">사용자 선택</option>
+            {% for user in users %}
+              <option value="{{ user.user_name }}">{{ user.user_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+
+        <button class="login-btn" type="submit">로그인</button>
+      </form>
+    </div>
+
+    <div class="hint">로그인한 사용자의 과목과 계획만 보여집니다.</div>
+  </div>
+</body>
+</html>

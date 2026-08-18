@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>나의 계획</title>
+  <style>
+    :root {
+      --bg: #f1f3f5;
+      --panel: #ffffff;
+      --ink: #1f2430;
+      --muted: #8993a3;
+      --divider: #e8ebf0;
+      --blue-900: #1d4e89;
+      --blue-700: #1f77d1;
+      --blue-500: #2c8dff;
+      --teal: #52d5a7;
+      --teal-soft: #dff9ef;
+      --green: #4ecb8d;
+      --orange: #f4b14d;
+      --purple: #7c6ee6;
+      --red: #ff6a6a;
+      --shadow: 0 18px 42px rgba(19, 33, 75, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: linear-gradient(180deg, #e9edf5 0%, #f5f6f8 100%);
+      font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 30px 18px;
+    }
+
+    .phone {
+      width: 100%;
+      max-width: 420px;
+      min-height: 860px;
+      background: #f5f5f7;
+      border-radius: 34px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      position: relative;
+    }
+
+    .screen {
+      padding: 18px 18px 0;
+      background: #f5f5f7;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 6px;
+      padding: 2px 2px 14px;
+      gap: 12px;
+    }
+
+    .title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 32px;
+      line-height: 1.2;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      color: #111827;
+      white-space: nowrap;
+    }
+
+    .action-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .new-plan-btn,
+    .today-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(17, 24, 39, 0.1);
+      background: rgba(255,255,255,0.75);
+      color: #1b2430;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 4px 12px rgba(17,24,39,0.04);
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    .new-plan-btn .plus,
+    .today-btn .icon {
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .today-btn {
+      background: rgba(28, 115, 232, 0.08);
+      border-color: rgba(28, 115, 232, 0.15);
+      color: #1d4e89;
+    }
+
+    .logout-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+      padding: 0 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      background: rgba(255,255,255,0.8);
+      color: #374151;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 4px 10px rgba(17,24,39,0.04);
+      flex-shrink: 0;
+      line-height: 1;
+      margin-left: auto;
+    }
+
+    .summary-card {
+      background: linear-gradient(180deg, #1b5ca6 0%, #1a7ad9 100%);
+      color: white;
+      border-radius: 28px;
+      padding: 20px 20px 18px;
+      box-shadow: 0 18px 28px rgba(31, 98, 180, 0.2);
+    }
+
+    .summary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .summary-title {
+      font-size: 13px;
+      font-weight: 700;
+      opacity: 0.95;
+    }
+
+    .summary-value {
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      background: conic-gradient(#eef7ff 0 64%, rgba(255,255,255,0.18) 64% 100%);
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .summary-value::before {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border-radius: 50%;
+      background: rgba(18, 72, 133, 0.88);
+      border: 1px solid rgba(255,255,255,0.22);
+    }
+
+    .summary-value span {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      font-weight: 800;
+      z-index: 1;
+      letter-spacing: -0.05em;
+    }
+
+    .summary-sub {
+      margin-top: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      opacity: 0.9;
+    }
+
+    .summary-date {
+      margin-top: 3px;
+      font-size: 13px;
+      opacity: 0.8;
+      letter-spacing: 0.01em;
+    }
+
+    .summary-dday {
+      margin-top: 14px;
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin: 18px 6px 12px;
+      color: #111827;
+    }
+
+    .subject-header {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .subject-list {
+      background: transparent;
+      border-radius: 20px;
+      padding: 0;
+      border: none;
+    }
+
+    .subject-item {
+      margin-bottom: 8px;
+      border: 1px solid rgba(17, 24, 39, 0.08);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.35);
+      overflow: hidden;
+      box-shadow: none;
+    }
+
+    .subject-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .subject-dropdown {
+      width: 100%;
+    }
+
+    .subject-dropdown > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .subject-summary {
+      display: grid;
+      grid-template-columns: 42px 1fr 26px;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      background: transparent;
+      border: 1px solid rgba(17, 24, 39, 0.08);
+    }
+
+    .subject-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .subject-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .subject-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #232c36;
+    }
+
+    .subject-name small {
+      font-size: 12px;
+      font-weight: 700;
+      color: #5b6674;
+    }
+
+    .dropdown-indicator {
+      font-size: 18px;
+      font-weight: 700;
+      color: #4b5563;
+      transition: transform 0.2s ease;
+    }
+
+    .subject-dropdown[open] .dropdown-indicator {
+      transform: rotate(180deg);
+    }
+
+    .subject-rate {
+      font-size: 15px;
+      font-weight: 800;
+      color: #1b2430;
+    }
+
+    .title-list {
+      padding: 0 16px 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .title-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(29, 115, 232, 0.06);
+      border: 1px solid rgba(29, 115, 232, 0.1);
+      color: #1f2430;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .title-item .title-name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .title-item .title-percent {
+      font-size: 13px;
+      font-weight: 800;
+      color: #1d4e89;
+      flex-shrink: 0;
+    }
+
+    .bar {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(17, 24, 39, 0.08);
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(17, 24, 39, 0.04);
+    }
+
+    .bar-fill {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: var(--pct);
+      border-radius: inherit;
+      background: linear-gradient(90deg, #6eddb4 0%, #64d4d2 100%);
+    }
+
+    .eng .bar-fill { background: linear-gradient(90deg, #72d9b5 0%, #5dc9d4 100%); }
+    .science .bar-fill { background: linear-gradient(90deg, #74c9ea 0%, #6aa6f1 100%); }
+    .korean .bar-fill { background: linear-gradient(90deg, #8bd9a3 0%, #67c393 100%); }
+
+    .tabbar {
+      position: sticky;
+      bottom: 0;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      background: rgba(255,255,255,0.92);
+      border-top: 1px solid rgba(17, 24, 39, 0.05);
+      padding: 12px 8px 18px;
+      margin-top: 12px;
+      backdrop-filter: blur(8px);
+    }
+
+    .tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: #6b7280;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .tab .emoji {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .tab.active {
+      color: #1e4e8a;
+    }
+
+    .tab.active .emoji {
+      filter: drop-shadow(0 2px 6px rgba(30, 78, 138, 0.12));
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+      z-index: 30;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      width: min(100%, 420px);
+      max-height: 88vh;
+      overflow-y: auto;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 20px;
+      padding: 18px 18px 16px;
+      box-shadow: 0 30px 50px rgba(15, 23, 42, 0.16);
+      border: 1px solid rgba(17, 24, 39, 0.06);
+      position: relative;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      width: 30px;
+      height: 30px;
+      border: none;
+      background: transparent;
+      font-size: 32px;
+      line-height: 1;
+      color: #2a2f36;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .modal-title {
+      text-align: center;
+      font-size: clamp(20px, 4.8vw, 26px);
+      font-weight: 900;
+      letter-spacing: -0.05em;
+      color: #111827;
+      margin: 8px 0 14px;
+    }
+
+    .form-row {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 16px;
+      font-weight: 700;
+      color: #1f2430;
+      margin-bottom: 7px;
+      letter-spacing: -0.03em;
+    }
+
+    .input,
+    .date-input {
+      width: 100%;
+      height: 42px;
+      border: 1px solid rgba(17, 24, 39, 0.18);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 0 12px;
+      font-size: 15px;
+      color: #1f2430;
+      outline: none;
+    }
+
+    .input::placeholder {
+      color: #9aa4b2;
+    }
+
+    .weekdays {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      margin-top: 8px;
+      margin-bottom: 8px;
+    }
+
+    .weekday {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 15px;
+      color: #1f2430;
+      font-weight: 600;
+    }
+
+    .weekday input {
+      width: 15px;
+      height: 15px;
+      accent-color: #1d73e8;
+      transform: scale(1.02);
+    }
+
+    .helper-text {
+      font-size: 13px;
+      color: #5a6473;
+      margin-top: 6px;
+      margin-bottom: 12px;
+    }
+
+    .date-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .date-field {
+      position: relative;
+    }
+
+    .date-input {
+      padding-right: 12px;
+    }
+
+    .save-btn {
+      display: block;
+      width: 100%;
+      max-width: 120px;
+      margin-left: auto;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #2a73eb 0%, #1c62d7 100%);
+      color: white;
+      font-size: 18px;
+      font-weight: 700;
+      height: 42px;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(31, 98, 180, 0.25);
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="screen">
+      <header class="topbar" style="position: relative;">
+        <div class="title-wrap">
+          <h1 class="title">{{ user_name }}의 계획</h1>
+          <div class="action-group">
+            <a href="/today" class="today-btn" aria-label="오늘의 학습">
+              <span>오늘의 학습</span>
+            </a>
+          </div>
+        </div>
+        <a href="/logout" class="logout-btn" aria-label="로그아웃">로그아웃</a>
+      </header>
+
+      <section class="summary-card">
+        <div class="summary-row">
+          <div>
+            <div class="summary-title">{{ user_name }}의 학습 현황</div>
+            <div class="summary-sub">총 {{ total_subjects }}개 과목</div>
+            <div class="summary-date">전체 진도율</div>
+            <div class="summary-dday">D-day: 14</div>
+          </div>
+          <div class="summary-value" aria-label="{{ overall }}% 완료"><span>{{ overall }}%</span></div>
+        </div>
+        <div class="summary-date" style="margin-top: 12px;">{{ total_subjects }} / {{ total_subjects }} 과목 진행 중</div>
+      </section>
+
+      <div class="subtitle">
+        <span class="subject-header">과목별 진도</span>
+      </div>
+
+      <div class="subject-list">
+        {% for subject in subjects %}
+          {% set subject_index = loop.index0 %}
+          {% set class_name = 'math' if subject_index % 4 == 0 else 'eng' if subject_index % 4 == 1 else 'science' if subject_index % 4 == 2 else 'korean' %}
+          <div class="subject-item {{ class_name }}" style="--pct: {{ subject.percent }}%;">
+            <details class="subject-dropdown">
+              <summary class="subject-summary">
+                <div class="icon">{{ ['📝','📘','🧪','📖'][subject_index % 4] }}</div>
+                <div class="subject-meta">
+                  <div class="subject-row">
+                    <div class="subject-name">{{ subject.name }}</div>
+                    <div class="subject-rate">{{ subject.percent }}%</div>
+                  </div>
+                  <div class="bar"><span class="bar-fill"></span></div>
+                </div>
+                <div class="dropdown-indicator">▾</div>
+              </summary>
+              {% if subject.titles %}
+                <div class="title-list">
+                  {% for title in subject.titles %}
+                    <a href="/plan/{{ title.plan_id }}/edit" class="title-item" style="text-decoration:none;">
+                      <span class="title-name">{{ title.title }}</span>
+                      <span class="title-percent">{{ subject.percent }}%</span>
+                    </a>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </details>
+          </div>
+        {% else %}
+          <div class="subject-item" style="--pct: 0%;">
+            <div class="icon">📌</div>
+            <div class="subject-meta">
+              <div class="subject-row">
+                <div class="subject-name">아직 등록된 과목이 없습니다</div>
+                <div class="subject-rate">0%</div>
+              </div>
+              <div class="bar"><span class="bar-fill"></span></div>
+            </div>
+            <div></div>
+          </div>
+        {% endfor %}
+      </div>
+
+      <nav class="tabbar" aria-label="하단 메뉴">
+        <div class="tab active" data-link="/dashboard"><span class="emoji">🏠</span><span>HOME</span></div>
+        <div class="tab" data-role="plan"><span class="emoji">🗂️</span><span>계획</span></div>
+        <div class="tab" data-link="/dday"><span class="emoji">📅</span><span>D-day</span></div>
+        <div class="tab" data-link="/dashboard"><span class="emoji">👤</span><span>MY</span></div>
+      </nav>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="planModal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="planModalTitle">
+      <button class="modal-close" type="button" aria-label="닫기" onclick="closePlanModal()">×</button>
+      <h2 class="modal-title" id="planModalTitle">새 학습 계획 추가</h2>
+
+      <div class="form-row">
+        <label class="form-label" for="plan-title">계획 제목</label>
+        <input id="plan-title" class="input" type="text" placeholder="예: TOEFL 단어 외우기" />
+      </div>
+
+      <div class="form-row">
+        <label class="form-label" for="subject-name">과목명</label>
+        <input id="subject-name" class="input" type="text" placeholder="예: 영어" />
+      </div>
+
+      <div class="form-row">
+        <label class="form-label" for="image-url">이미지 URL (선택)</label>
+        <input id="image-url" class="input" type="url" placeholder="예: https://example.com/image.jpg" />
+      </div>
+
+      <div class="form-row">
+        <label class="form-label" for="link-url">링크 URL (선택)</label>
+        <input id="link-url" class="input" type="url" placeholder="예: https://example.com/lesson" />
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">요일 선택</div>
+        <div class="weekdays" aria-label="요일 선택">
+          <label class="weekday"><input type="checkbox" checked /> 월</label>
+          <label class="weekday"><input type="checkbox" checked /> 화</label>
+          <label class="weekday"><input type="checkbox" checked /> 수</label>
+          <label class="weekday"><input type="checkbox" checked /> 목</label>
+          <label class="weekday"><input type="checkbox" checked /> 금</label>
+          <label class="weekday"><input type="checkbox" checked /> 토</label>
+          <label class="weekday"><input type="checkbox" checked /> 일</label>
+        </div>
+        <div class="helper-text">선택한 요일만 학습 계획이 배치됩니다.</div>
+      </div>
+
+      <div class="date-grid">
+        <div class="date-field">
+          <label class="form-label" for="start-date">시작일</label>
+          <input id="start-date" class="date-input" type="date" value="2026-08-12" />
+        </div>
+
+        <div class="date-field">
+          <label class="form-label" for="end-date">종료일</label>
+          <input id="end-date" class="date-input" type="date" value="2026-08-18" />
+        </div>
+      </div>
+
+      <button class="save-btn" type="button" id="savePlanBtn">저장</button>
+    </div>
+  </div>
+
+  <script>
+    const modal = document.getElementById('planModal');
+    const planTab = document.querySelector('[data-role="plan"]');
+    const ddayTab = document.querySelector('[data-link="/dday"]');
+    const saveBtn = document.getElementById('savePlanBtn');
+
+    function openPlanModal() {
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closePlanModal() {
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    if (ddayTab) {
+      ddayTab.addEventListener('click', function () {
+        window.location.href = '/dday';
+      });
+    }
+
+    saveBtn.addEventListener('click', async function () {
+      const title = document.getElementById('plan-title').value.trim();
+      const subject = document.getElementById('subject-name').value.trim();
+      const imageUrl = document.getElementById('image-url').value.trim();
+      const linkUrl = document.getElementById('link-url').value.trim();
+      const startDate = document.getElementById('start-date').value;
+      const endDate = document.getElementById('end-date').value;
+      const weekdays = Array.from(document.querySelectorAll('.weekday input'))
+        .map((checkbox, index) => checkbox.checked ? index : null)
+        .filter((value) => value !== null);
+
+      if (!title || !subject || !startDate || !endDate || weekdays.length === 0) {
+        alert('필수 항목을 모두 입력하세요.');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/create-study-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            subject,
+            start_date: startDate,
+            end_date: endDate,
+            image_url: imageUrl,
+            link_url: linkUrl,
+            weekdays
+          })
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || '저장에 실패했습니다.');
+        }
+
+        alert(`학습 계획이 저장되었습니다. (${result.count}개 날짜 생성)`);
+        closePlanModal();
+      } catch (error) {
+        alert(error.message || '저장 중 오류가 발생했습니다.');
+      }
+    });
+
+    if (planTab) {
+      planTab.addEventListener('click', openPlanModal);
+    }
+    modal.addEventListener('click', function (event) {
+      if (event.target === modal) closePlanModal();
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') closePlanModal();
+    });
+  </script>
+</body>
+</html>
