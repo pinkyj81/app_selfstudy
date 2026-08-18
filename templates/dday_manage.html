@@ -191,7 +191,7 @@
 
     .tabbar {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       background: rgba(255,255,255,0.92);
       border-top: 1px solid rgba(17,24,39,0.05);
       padding: 12px 8px 18px;
@@ -209,9 +209,11 @@
       text-decoration: none;
     }
 
-    .tab .emoji {
-      font-size: 22px;
-      line-height: 1;
+    .tab .emoji,
+    .tab svg {
+      width: 22px;
+      height: 22px;
+      stroke-width: 2.2;
     }
 
     .tab.active {
@@ -261,12 +263,19 @@
       </section>
 
       <nav class="tabbar" aria-label="하단 메뉴">
-        <a class="tab" href="/dashboard"><span class="emoji">🏠</span><span>HOME</span></a>
-        <a class="tab" href="/dashboard"><span class="emoji">🗂️</span><span>계획</span></a>
-        <a class="tab active" href="/dday"><span class="emoji">📅</span><span>D-day</span></a>
-        <a class="tab" href="/dashboard"><span class="emoji">👤</span><span>MY</span></a>
+        <a class="tab" href="/dashboard"><i class="emoji" data-lucide="house"></i><span>HOME</span></a>
+        <a class="tab" href="/dashboard"><i class="emoji" data-lucide="folder"></i><span>새계획</span></a>
+        <a class="tab" href="/wrong-note"><i class="emoji" data-lucide="notebook-pen"></i><span>오답노트</span></a>
+        <a class="tab active" href="/dday"><i class="emoji" data-lucide="calendar"></i><span>D-day</span></a>
+        <a class="tab" href="/dashboard"><i class="emoji" data-lucide="user"></i><span>MY</span></a>
       </nav>
     </div>
   </div>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  </script>
 </body>
 </html>

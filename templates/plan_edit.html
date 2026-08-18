@@ -458,9 +458,9 @@
                 <td>
                   <div class="status-cell">
                     <select class="status-select" name="task_status">
-                      <option value="완료">완료</option>
-                      <option value="진행중" selected>진행중</option>
-                      <option value="미완료">미완료</option>
+                      <option value="완료" {% if task.task_status == '완료' %}selected{% endif %}>완료</option>
+                      <option value="진행중" {% if task.task_status == '진행중' %}selected{% endif %}>진행중</option>
+                      <option value="미완료" {% if task.task_status == '미완료' %}selected{% endif %}>미완료</option>
                     </select>
                     <button class="delete-btn" type="button" aria-label="삭제" title="삭제">🗑️</button>
                   </div>

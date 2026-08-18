@@ -160,8 +160,9 @@
     }
 
     .summary-title {
-      font-size: 13px;
+      font-size: 18px;
       font-weight: 700;
+      line-height: 1.25;
       opacity: 0.95;
     }
 
@@ -169,7 +170,10 @@
       width: 92px;
       height: 92px;
       border-radius: 50%;
-      background: conic-gradient(#eef7ff 0 64%, rgba(255,255,255,0.18) 64% 100%);
+      background: conic-gradient(
+        #eef7ff 0 calc(var(--overall-pct, 0) * 1%),
+        rgba(255,255,255,0.18) calc(var(--overall-pct, 0) * 1%) 100%
+      );
       position: relative;
       flex-shrink: 0;
     }
@@ -396,8 +400,10 @@
       grid-template-columns: repeat(5, 1fr);
       background: rgba(255,255,255,0.92);
       border-top: 1px solid rgba(17, 24, 39, 0.05);
-      padding: 12px 8px 18px;
-      margin-top: 12px;
+      padding: 10px 10px 14px;
+      margin-top: 14px;
+      border-radius: 14px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
       backdrop-filter: blur(8px);
     }
 
@@ -405,23 +411,35 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 6px;
+      gap: 7px;
       color: #6b7280;
-      font-size: 11px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 800;
       text-align: center;
+      padding: 6px 2px;
+      border-radius: 10px;
+      transition: background-color 0.15s ease, color 0.15s ease;
     }
 
-    .tab .emoji {
-      font-size: 22px;
-      line-height: 1;
+    .tab .emoji,
+    .tab svg {
+      width: 21px;
+      height: 21px;
+      stroke-width: 2.2;
+    }
+
+    .tab:hover {
+      background: rgba(37, 99, 235, 0.07);
+      color: #35527a;
     }
 
     .tab.active {
       color: #1e4e8a;
+      background: rgba(37, 99, 235, 0.1);
     }
 
-    .tab.active .emoji {
+    .tab.active .emoji,
+    .tab.active svg {
       filter: drop-shadow(0 2px 6px rgba(30, 78, 138, 0.12));
     }
 
@@ -591,14 +609,13 @@
       <section class="summary-card">
         <div class="summary-row">
           <div>
-            <div class="summary-title">{{ user_name }}의 학습 현황</div>
+            <div class="summary-title">{{ dashboard_dday }}</div>
             <div class="summary-sub">총 {{ total_subjects }}개 과목</div>
             <div class="summary-date">전체 진도율</div>
-            <div class="summary-dday">D-day: 14</div>
           </div>
-          <div class="summary-value" aria-label="{{ overall }}% 완료"><span>{{ overall }}%</span></div>
+          <div id="summaryDonut" class="summary-value" style="--overall-pct: {{ overall }};" aria-label="{{ overall }}% 완료"><span id="summaryPercentText">{{ overall }}%</span></div>
         </div>
-        <div class="summary-date" style="margin-top: 12px;">{{ total_subjects }} / {{ total_subjects }} 과목 진행 중</div>
+        <div id="summaryTodayProgress" class="summary-date" style="margin-top: 12px;">오늘 학습 {{ today_completed }} / {{ today_total }} 완료</div>
       </section>
 
       <div class="subtitle">
@@ -612,11 +629,13 @@
           <div class="subject-item {{ class_name }}" style="--pct: {{ subject.percent }}%;">
             <details class="subject-dropdown">
               <summary class="subject-summary">
-                <div class="icon">{{ ['📝','📘','🧪','📖'][subject_index % 4] }}</div>
+                <div class="icon">
+                  <i data-lucide="{{ ['notebook-pen','book-open','flask-conical','scroll-text'][subject_index % 4] }}"></i>
+                </div>
                 <div class="subject-meta">
                   <div class="subject-row">
                     <div class="subject-name">{{ subject.name }}</div>
-                    <div class="subject-rate">{{ subject.percent }}%</div>
+                    <div class="subject-rate">{{ subject.completed_count }}/{{ subject.total_count }}</div>
                   </div>
                   <div class="bar"><span class="bar-fill"></span></div>
                 </div>
@@ -627,7 +646,7 @@
                   {% for title in subject.titles %}
                     <a href="/plan/{{ title.plan_id }}/edit" class="title-item" style="text-decoration:none;">
                       <span class="title-name">{{ title.title }}</span>
-                      <span class="title-percent">{{ subject.percent }}%</span>
+                      <span class="title-percent">{{ subject.completed_count }}/{{ subject.total_count }}</span>
                     </a>
                   {% endfor %}
                 </div>
@@ -636,11 +655,11 @@
           </div>
         {% else %}
           <div class="subject-item" style="--pct: 0%;">
-            <div class="icon">📌</div>
+            <div class="icon"><i data-lucide="pin"></i></div>
             <div class="subject-meta">
               <div class="subject-row">
                 <div class="subject-name">아직 등록된 과목이 없습니다</div>
-                <div class="subject-rate">0%</div>
+                <div class="subject-rate">0/0</div>
               </div>
               <div class="bar"><span class="bar-fill"></span></div>
             </div>
@@ -650,10 +669,11 @@
       </div>
 
       <nav class="tabbar" aria-label="하단 메뉴">
-        <div class="tab active" data-link="/dashboard"><span class="emoji">🏠</span><span>HOME</span></div>
-        <div class="tab" data-role="plan"><span class="emoji">🗂️</span><span>계획</span></div>
-        <div class="tab" data-link="/dday"><span class="emoji">📅</span><span>D-day</span></div>
-        <div class="tab" data-link="/dashboard"><span class="emoji">👤</span><span>MY</span></div>
+        <div class="tab active" data-link="/dashboard"><i class="emoji" data-lucide="house"></i><span>HOME</span></div>
+        <div class="tab" data-role="plan"><i class="emoji" data-lucide="folder"></i><span>새계획</span></div>
+        <div class="tab" data-link="/wrong-note"><i class="emoji" data-lucide="notebook-pen"></i><span>오답노트</span></div>
+        <div class="tab" data-link="/dday"><i class="emoji" data-lucide="calendar"></i><span>D-day</span></div>
+        <div class="tab" data-link="/dashboard"><i class="emoji" data-lucide="user"></i><span>MY</span></div>
       </nav>
     </div>
   </div>
@@ -713,11 +733,51 @@
     </div>
   </div>
 
+  <script src="https://unpkg.com/lucide@latest"></script>
   <script>
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+
     const modal = document.getElementById('planModal');
     const planTab = document.querySelector('[data-role="plan"]');
     const ddayTab = document.querySelector('[data-link="/dday"]');
     const saveBtn = document.getElementById('savePlanBtn');
+    const summaryDonut = document.getElementById('summaryDonut');
+    const summaryPercentText = document.getElementById('summaryPercentText');
+    const summaryTodayProgress = document.getElementById('summaryTodayProgress');
+
+    async function refreshTodayProgress() {
+      try {
+        const res = await fetch('/api/today-progress', {
+          headers: { 'Accept': 'application/json' },
+          cache: 'no-store',
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) return;
+
+        const pct = Number.isFinite(Number(data.percent)) ? Number(data.percent) : 0;
+        if (summaryDonut) {
+          summaryDonut.style.setProperty('--overall-pct', String(pct));
+          summaryDonut.setAttribute('aria-label', `${pct}% 완료`);
+        }
+        if (summaryPercentText) {
+          summaryPercentText.textContent = `${pct}%`;
+        }
+        if (summaryTodayProgress) {
+          summaryTodayProgress.textContent = `오늘 학습 ${data.completed} / ${data.total} 완료`;
+        }
+      } catch (err) {
+        // Ignore temporary network failures and keep existing value on screen.
+      }
+    }
+
+    refreshTodayProgress();
+    window.setInterval(refreshTodayProgress, 10000);
+    window.addEventListener('focus', refreshTodayProgress);
+    document.addEventListener('visibilitychange', function () {
+      if (!document.hidden) refreshTodayProgress();
+    });
 
     function openPlanModal() {
       modal.classList.add('open');
@@ -734,6 +794,13 @@
         window.location.href = '/dday';
       });
     }
+
+    document.querySelectorAll('.tab[data-link]').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        const href = tab.getAttribute('data-link');
+        if (href) window.location.href = href;
+      });
+    });
 
     saveBtn.addEventListener('click', async function () {
       const title = document.getElementById('plan-title').value.trim();

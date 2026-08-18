@@ -66,49 +66,78 @@
       padding: 16px 14px;
       margin-bottom: 14px;
     }
+    .date-nav {
+      display: grid;
+      grid-template-columns: 36px 1fr 36px;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .date-arrow {
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      border: 1px solid rgba(28, 115, 232, 0.25);
+      background: #ffffff;
+      color: #1c73e8;
+      text-decoration: none;
+      font-size: 20px;
+      font-weight: 800;
+    }
     .today-label {
       font-size: 13px;
       color: var(--muted);
       font-weight: 700;
       margin-bottom: 6px;
+      text-align: center;
     }
     .today-date {
       font-size: 26px;
       font-weight: 900;
       letter-spacing: -0.04em;
       margin: 0;
+      text-align: center;
+    }
+    .section-title {
+      margin: 16px 2px 10px;
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: #1f2937;
     }
     .task-list {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      margin-top: 8px;
+      margin-top: 6px;
     }
-    .task-item {
-      display: grid;
-      grid-template-columns: 40px 1fr auto;
-      gap: 10px;
-      align-items: center;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.7);
-      padding: 12px 6px;
-      background: transparent;
+    .plan-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      background: #ffffff;
+      box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+      padding: 12px 12px 10px;
     }
-    .task-no {
-      font-size: 18px;
-      font-weight: 800;
-      color: var(--ink);
-      text-align: center;
+    .card-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
     }
     .task-main {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
       min-width: 0;
+      flex: 1;
     }
     .subject-pill {
       display: inline-block;
       width: fit-content;
-      padding: 4px 8px;
+      padding: 3px 8px;
       border-radius: 999px;
       background: var(--blue-soft);
       color: var(--blue);
@@ -131,31 +160,121 @@
       border: 1px solid rgba(28, 115, 232, 0.12);
     }
     .task-title {
-      font-size: 15px;
-      font-weight: 700;
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
       color: var(--ink);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .task-plan {
-      font-size: 12px;
+      font-size: 13px;
       color: var(--muted);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .task-check {
-      width: 26px;
-      height: 26px;
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      height: 24px;
       border-radius: 8px;
-      border: 1px solid rgba(15, 23, 42, 0.18);
-      background: rgba(255,255,255,0.6);
-      font-size: 18px;
+      padding: 0 8px;
+      font-size: 11px;
+      font-weight: 800;
+      border: 1px solid transparent;
+      flex-shrink: 0;
+    }
+    .status-badge.pending {
+      background: #fff6dc;
+      color: #9a6800;
+      border-color: #f5d489;
+    }
+    .status-badge.done {
+      background: #e7f9ee;
+      color: #1f8a4c;
+      border-color: #b8e9c9;
+    }
+    .card-bottom {
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .start-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #8f67f2, #7750de);
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+    .start-btn.hidden {
+      display: none;
+    }
+    .task-check {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.7);
+      background: #f8fafc;
+      font-size: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
+      color: transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .task-check.done {
+      background: rgba(54, 179, 119, 0.16);
+      border-color: rgba(54, 179, 119, 0.45);
       color: var(--green);
+    }
+    .cheer-box {
+      margin-top: 12px;
+      border-radius: 14px;
+      border: 1px solid #e5defd;
+      background: linear-gradient(180deg, #f8f3ff 0%, #f4f0ff 100%);
+      padding: 12px;
+    }
+    .cheer-title {
+      font-size: 15px;
+      font-weight: 900;
+      color: #2f2c54;
+      margin-bottom: 4px;
+    }
+    .cheer-sub {
+      font-size: 12px;
+      color: #5b6075;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .cheer-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .cheer-stat {
+      border-radius: 10px;
+      background: #ffffff;
+      border: 1px solid #ece9f8;
+      padding: 8px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #4b5563;
+      font-weight: 800;
     }
     .empty-state {
       border: 1px solid var(--line);
@@ -166,6 +285,43 @@
       font-size: 15px;
       color: var(--muted);
       line-height: 1.6;
+    }
+    .tabbar {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      background: rgba(255,255,255,0.92);
+      border-top: 1px solid rgba(17,24,39,0.05);
+      padding: 10px 10px 14px;
+      margin-top: 18px;
+      border-radius: 14px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    }
+    .tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      color: #6b7280;
+      font-size: 12px;
+      font-weight: 800;
+      text-decoration: none;
+      padding: 6px 2px;
+      border-radius: 10px;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+    .tab .emoji,
+    .tab svg {
+      width: 21px;
+      height: 21px;
+      stroke-width: 2.2;
+    }
+    .tab:hover {
+      background: rgba(37, 99, 235, 0.07);
+      color: #35527a;
+    }
+    .tab.active {
+      color: #1e4e8a;
+      background: rgba(37, 99, 235, 0.1);
     }
   </style>
 </head>
@@ -179,25 +335,57 @@
 
     <div class="header-box">
       <div class="today-label">오늘 날짜</div>
-      <p class="today-date">{{ today_date }}</p>
+      <div class="date-nav">
+        <a class="date-arrow" href="/today?date={{ prev_date }}" aria-label="어제로 이동">‹</a>
+        <p class="today-date">{{ today_date }}</p>
+        <a class="date-arrow" href="/today?date={{ next_date }}" aria-label="다음날로 이동">›</a>
+      </div>
     </div>
 
+    <div class="section-title">오늘의 학습 계획</div>
     {% if tasks %}
+      {% set ns = namespace(completed=0) %}
       <div class="task-list">
         {% for task in tasks %}
-          <div class="task-item">
-            <div class="task-no">{{ loop.index }}</div>
-            <div class="task-main">
-              <span class="subject-pill">{{ task.subject }}</span>
-              <div class="task-title">{{ task.task_title }}</div>
-              <div class="task-plan">{{ task.plan_title }}</div>
-              {% if task.link_url %}
-                <a class="task-link" href="{{ task.link_url if task.link_url.startswith('http://') or task.link_url.startswith('https://') else 'https://' + task.link_url }}" target="_blank" rel="noopener noreferrer">🔗 바로가기</a>
-              {% endif %}
+          {% if task.is_completed %}{% set ns.completed = ns.completed + 1 %}{% endif %}
+          <div class="plan-card">
+            <div class="card-head">
+              <div class="task-main">
+                <span class="subject-pill">{{ task.subject }}</span>
+                <div class="task-title">{{ task.task_title }}</div>
+                <div class="task-plan">{{ task.link_url if task.link_url else task.plan_title }}</div>
+              </div>
+              <span class="status-badge {% if task.is_completed %}done{% else %}pending{% endif %}" data-role="status-badge">
+                {% if task.is_completed %}완료{% else %}예정{% endif %}
+              </span>
             </div>
-            <div class="task-check">✓</div>
+            <div class="card-bottom">
+              {% if task.link_url %}
+                <a class="start-btn{% if task.is_completed %} hidden{% endif %}" data-role="start-btn" href="{{ task.link_url if task.link_url.startswith('http://') or task.link_url.startswith('https://') else 'https://' + task.link_url }}" target="_blank" rel="noopener noreferrer">공부 시작</a>
+              {% else %}
+                <span></span>
+              {% endif %}
+              <div>
+                <button
+                  type="button"
+                  class="task-check{% if task.is_completed %} done{% endif %}"
+                  data-task-id="{{ task.task_id }}"
+                  data-plan-date="{{ task.plan_date }}"
+                  aria-label="완료 체크"
+                >✓</button>
+              </div>
+            </div>
           </div>
         {% endfor %}
+      </div>
+
+      <div class="cheer-box">
+        <div class="cheer-title">오늘도 화이팅! 💪</div>
+        <div class="cheer-sub">계획을 실천하면 목표는 가까워져요!</div>
+        <div class="cheer-stats">
+          <div class="cheer-stat"><span>오늘 완료</span><span id="todayDoneText">{{ ns.completed }} / {{ tasks|length }}</span></div>
+          <div class="cheer-stat"><span>총 완료</span><span id="todayPercentText">{{ (ns.completed * 100 // (tasks|length if tasks|length > 0 else 1)) }}%</span></div>
+        </div>
       </div>
     {% else %}
       <div class="empty-state">
@@ -205,6 +393,75 @@
         새 계획을 추가해보세요.
       </div>
     {% endif %}
+
+    <nav class="tabbar" aria-label="하단 메뉴">
+      <a class="tab active" href="/dashboard"><i class="emoji" data-lucide="house"></i><span>HOME</span></a>
+      <a class="tab" href="/dashboard"><i class="emoji" data-lucide="folder"></i><span>새계획</span></a>
+      <a class="tab" href="/wrong-note"><i class="emoji" data-lucide="notebook-pen"></i><span>오답노트</span></a>
+      <a class="tab" href="/dday"><i class="emoji" data-lucide="calendar"></i><span>D-day</span></a>
+      <a class="tab" href="/dashboard"><i class="emoji" data-lucide="user"></i><span>MY</span></a>
+    </nav>
   </div>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+
+    document.querySelectorAll('.task-check').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        const taskId = btn.dataset.taskId;
+        const planDate = btn.dataset.planDate;
+        const nextDone = !btn.classList.contains('done');
+
+        try {
+          const res = await fetch('/api/today-task-toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              task_id: Number(taskId),
+              plan_date: planDate,
+              is_completed: nextDone,
+            }),
+          });
+          const data = await res.json();
+          if (!res.ok || !data.ok) {
+            throw new Error(data.error || '완료 상태 저장에 실패했습니다.');
+          }
+          btn.classList.toggle('done', nextDone);
+
+          const card = btn.closest('.plan-card');
+          if (card) {
+            const badge = card.querySelector('[data-role="status-badge"]');
+            const startBtn = card.querySelector('[data-role="start-btn"]');
+            if (badge) {
+              badge.classList.toggle('done', nextDone);
+              badge.classList.toggle('pending', !nextDone);
+              badge.textContent = nextDone ? '완료' : '예정';
+            }
+            if (startBtn) {
+              startBtn.classList.toggle('hidden', nextDone);
+            }
+          }
+
+          const allChecks = document.querySelectorAll('.task-check');
+          const doneChecks = document.querySelectorAll('.task-check.done');
+          const doneCount = doneChecks.length;
+          const totalCount = allChecks.length;
+          const doneText = document.getElementById('todayDoneText');
+          const pctText = document.getElementById('todayPercentText');
+          if (doneText) {
+            doneText.textContent = `${doneCount} / ${totalCount}`;
+          }
+          if (pctText) {
+            const pct = totalCount > 0 ? Math.floor((doneCount * 100) / totalCount) : 0;
+            pctText.textContent = `${pct}%`;
+          }
+        } catch (err) {
+          alert(err.message || '완료 상태 저장 중 오류가 발생했습니다.');
+        }
+      });
+    });
+  </script>
 </body>
 </html>

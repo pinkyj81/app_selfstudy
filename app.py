@@ -31,6 +31,64 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 ALLOWED    = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 
+def ensure_app_tables(conn):
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        IF OBJECT_ID('dbo.study_plan_dday_items', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.study_plan_dday_items (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                user_id INT NOT NULL,
+                title NVARCHAR(200) NOT NULL,
+                target_date DATE NOT NULL,
+                created_at DATETIMEOFFSET NOT NULL CONSTRAINT DF_study_plan_dday_created_at DEFAULT SYSDATETIMEOFFSET()
+            );
+            CREATE INDEX IX_study_plan_dday_user_target ON dbo.study_plan_dday_items(user_id, target_date);
+        END
+        """
+    )
+    cursor.execute(
+        """
+        IF OBJECT_ID('dbo.study_app_meta', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.study_app_meta (
+                meta_key NVARCHAR(100) NOT NULL PRIMARY KEY,
+                meta_value NVARCHAR(MAX) NULL,
+                updated_at DATETIMEOFFSET NOT NULL CONSTRAINT DF_study_app_meta_updated_at DEFAULT SYSDATETIMEOFFSET()
+            );
+        END
+        """
+    )
+    cursor.execute(
+        """
+        IF OBJECT_ID('dbo.study_plan_task_completion', 'U') IS NULL
+        BEGIN
+            CREATE TABLE dbo.study_plan_task_completion (
+                id INT IDENTITY(1,1) PRIMARY KEY,
+                user_id INT NOT NULL,
+                task_id INT NOT NULL,
+                completed_date DATE NOT NULL,
+                created_at DATETIMEOFFSET NOT NULL CONSTRAINT DF_study_plan_task_completion_created_at DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT UQ_study_plan_task_completion UNIQUE (user_id, task_id, completed_date)
+            );
+            CREATE INDEX IX_study_plan_task_completion_user_date ON dbo.study_plan_task_completion(user_id, completed_date);
+        END
+        """
+    )
+    cursor.execute(
+        """
+        IF COL_LENGTH('dbo.study_plan_task', 'task_status') IS NULL
+        BEGIN
+            ALTER TABLE dbo.study_plan_task
+            ADD task_status NVARCHAR(20) NOT NULL
+                CONSTRAINT DF_study_plan_task_task_status DEFAULT N'진행중';
+        END
+        """
+    )
+    conn.commit()
+
+
 def resolve_driver():
     installed = [d for d in pyodbc.drivers() if 'SQL Server' in d]
     for candidate in [DB_DRIVER, 'ODBC Driver 17 for SQL Server', 'ODBC Driver 18 for SQL Server', 'SQL Server']:
@@ -147,13 +205,63 @@ def generate_date_list(start_date: str, end_date: str, selected_weekdays):
 
 
 def load_data() -> dict:
-    if DATA_FILE.exists():
-        return json.loads(DATA_FILE.read_text(encoding='utf-8'))
-    return {'title': '앱 이름을 입력하세요', 'description': '앱 설명을 입력하세요.', 'images': []}
+    default_data = {'title': '앱 이름을 입력하세요', 'description': '앱 설명을 입력하세요.', 'images': []}
+    try:
+        conn = get_db_conn()
+        ensure_app_tables(conn)
+        rows = conn.cursor().execute(
+            "SELECT meta_key, meta_value FROM dbo.study_app_meta WHERE meta_key IN ('title', 'description', 'images')"
+        ).fetchall()
+        conn.close()
+
+        data = dict(default_data)
+        meta_map = {str(row[0]): row[1] for row in rows}
+        if meta_map.get('title'):
+            data['title'] = str(meta_map['title'])
+        if meta_map.get('description'):
+            data['description'] = str(meta_map['description'])
+
+        images_raw = meta_map.get('images')
+        if images_raw:
+            try:
+                parsed = json.loads(images_raw)
+                if isinstance(parsed, list):
+                    data['images'] = [str(name) for name in parsed if str(name).strip()]
+            except Exception:
+                data['images'] = []
+        return data
+    except Exception:
+        if DATA_FILE.exists():
+            return json.loads(DATA_FILE.read_text(encoding='utf-8'))
+        return default_data
 
 
 def save_data(data: dict):
-    DATA_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
+    title = str(data.get('title') or '').strip()
+    description = str(data.get('description') or '').strip()
+    images_json = json.dumps(data.get('images') or [], ensure_ascii=False)
+
+    try:
+        conn = get_db_conn()
+        ensure_app_tables(conn)
+        cursor = conn.cursor()
+        for key, value in (('title', title), ('description', description), ('images', images_json)):
+            cursor.execute(
+                """
+                MERGE dbo.study_app_meta AS target
+                USING (SELECT ? AS meta_key, ? AS meta_value) AS src
+                    ON target.meta_key = src.meta_key
+                WHEN MATCHED THEN
+                    UPDATE SET meta_value = src.meta_value, updated_at = SYSDATETIMEOFFSET()
+                WHEN NOT MATCHED THEN
+                    INSERT (meta_key, meta_value) VALUES (src.meta_key, src.meta_value);
+                """,
+                (key, value),
+            )
+        conn.commit()
+        conn.close()
+    except Exception:
+        DATA_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
 
 
 def allowed(filename: str) -> bool:
@@ -175,24 +283,54 @@ def get_user_list():
 def get_user_subjects(user_id):
     try:
         conn = get_db_conn()
+        ensure_app_tables(conn)
         rows = conn.cursor().execute(
             """
-            SELECT plan_id, subject, title
-            FROM dbo.study_plan
-            WHERE user_id = ? AND subject IS NOT NULL AND LTRIM(RTRIM(subject)) <> ''
-            ORDER BY subject, plan_id
+            SELECT
+                sp.plan_id,
+                sp.subject,
+                sp.title,
+                COUNT(st.task_id) AS total_tasks,
+                SUM(
+                    CASE
+                        WHEN ISNULL(st.task_status, N'진행중') = N'완료' THEN 1
+                        WHEN tc.task_id IS NULL THEN 0
+                        ELSE 1
+                    END
+                ) AS completed_tasks
+            FROM dbo.study_plan sp
+            INNER JOIN dbo.study_plan_task st
+                ON st.plan_id = sp.plan_id
+               AND CAST(st.plan_date AS date) >= CAST(GETDATE() AS date)
+            LEFT JOIN dbo.study_plan_task_completion tc
+                ON tc.user_id = sp.user_id
+               AND tc.task_id = st.task_id
+               AND tc.completed_date = CAST(st.plan_date AS date)
+            WHERE sp.user_id = ?
+              AND sp.subject IS NOT NULL
+              AND LTRIM(RTRIM(sp.subject)) <> ''
+            GROUP BY sp.plan_id, sp.subject, sp.title
+            ORDER BY sp.subject, sp.plan_id
             """,
             (user_id,),
         ).fetchall()
         conn.close()
 
         grouped = {}
-        for plan_id, subject_name, title in rows:
+        for plan_id, subject_name, title, total_tasks, completed_tasks in rows:
             subject_name = (subject_name or '').strip()
             if not subject_name:
                 continue
-            entry = grouped.setdefault(subject_name, {'name': subject_name, 'titles': [], 'plan_count': 0})
+            entry = grouped.setdefault(subject_name, {
+                'name': subject_name,
+                'titles': [],
+                'plan_count': 0,
+                'total_tasks': 0,
+                'completed_tasks': 0,
+            })
             entry['plan_count'] += 1
+            entry['total_tasks'] += int(total_tasks or 0)
+            entry['completed_tasks'] += int(completed_tasks or 0)
             if title:
                 seen = {item['title'] for item in entry['titles']}
                 if title not in seen:
@@ -200,10 +338,14 @@ def get_user_subjects(user_id):
 
         subjects = []
         for subject_name, entry in grouped.items():
-            percent = min(100, max(20, int(entry['plan_count']) * 25))
+            percent = 0
+            if entry['total_tasks'] > 0:
+                percent = round((entry['completed_tasks'] / entry['total_tasks']) * 100)
             subjects.append({
                 'name': subject_name,
                 'percent': percent,
+                'completed_count': entry['completed_tasks'],
+                'total_count': entry['total_tasks'],
                 'plan_count': entry['plan_count'],
                 'titles': entry['titles'],
             })
@@ -234,15 +376,21 @@ def get_today_tasks(user_id, target_date=None):
     target_date = target_date or date.today().isoformat()
     try:
         conn = get_db_conn()
+        ensure_app_tables(conn)
         task_columns = get_table_columns(conn, 'study_plan_task')
         select_sql = """
-            SELECT sp.plan_id, sp.subject, sp.title, st.task_id, st.plan_date, st.task_title, st.order_no
+            SELECT sp.plan_id, sp.subject, sp.title, st.task_id, st.plan_date, st.task_title, st.order_no,
+                   CASE WHEN tc.task_id IS NULL THEN 0 ELSE 1 END AS is_completed
         """
         if 'link_url' in task_columns:
             select_sql += ", st.link_url"
         select_sql += """
             FROM dbo.study_plan sp
             INNER JOIN dbo.study_plan_task st ON st.plan_id = sp.plan_id
+            LEFT JOIN dbo.study_plan_task_completion tc
+                ON tc.user_id = sp.user_id
+               AND tc.task_id = st.task_id
+               AND tc.completed_date = CAST(st.plan_date AS date)
             WHERE sp.user_id = ? AND CAST(st.plan_date AS date) = ?
             ORDER BY sp.subject, st.order_no, st.task_id
         """
@@ -259,13 +407,26 @@ def get_today_tasks(user_id, target_date=None):
                 'plan_date': row[4].isoformat() if hasattr(row[4], 'isoformat') else str(row[4]),
                 'task_title': row[5] or '학습 내용 없음',
                 'order_no': row[6],
+                'is_completed': bool(row[7]),
             }
             if 'link_url' in task_columns:
-                task['link_url'] = row[7] if len(row) > 7 else None
+                task['link_url'] = row[8] if len(row) > 8 else None
             tasks.append(task)
         return tasks
     except Exception:
         return []
+
+
+def get_today_progress(user_id, target_date=None):
+    tasks = get_today_tasks(user_id, target_date)
+    total = len(tasks)
+    completed = sum(1 for task in tasks if task.get('is_completed'))
+    percent = round((completed / total) * 100) if total > 0 else 0
+    return {
+        'total': total,
+        'completed': completed,
+        'percent': percent,
+    }
 
 
 @app.route('/')
@@ -306,9 +467,9 @@ def dashboard():
     user_name = session.get('user_name', '사용자')
     subjects = get_user_subjects(user_id)
     total_subjects = len(subjects)
-    overall = 0
-    if subjects:
-        overall = round(sum(item['percent'] for item in subjects) / len(subjects))
+    today_progress = get_today_progress(user_id)
+    overall = today_progress['percent']
+    dashboard_dday = get_dashboard_dday_text(user_id)
 
     return render_template(
         'mobile_study_home.html',
@@ -317,29 +478,104 @@ def dashboard():
         user_id=user_id,
         total_subjects=total_subjects,
         overall=overall,
+        today_total=today_progress['total'],
+        today_completed=today_progress['completed'],
+        dashboard_dday=dashboard_dday,
     )
 
 
-def get_dday_items():
-    items = session.get('dday_items', [])
-    if not isinstance(items, list):
-        return []
+def get_dashboard_dday_text(user_id):
+    items = get_dday_items(user_id)
+    if not items:
+        return 'D-day 일정 없음'
 
-    normalized = []
-    for index, item in enumerate(items):
-        if not isinstance(item, dict):
+    today = date.today()
+    candidates = []
+    for item in items:
+        try:
+            target = datetime.strptime(item['target_date'], '%Y-%m-%d').date()
+        except Exception:
+            continue
+        delta_days = (target - today).days
+        if delta_days < 0:
             continue
         title = str(item.get('title') or '').strip()
-        target_date = str(item.get('target_date') or '').strip()
-        if not title or not target_date:
-            continue
-        normalized.append({
-            'id': item.get('id', index + 1),
-            'title': title,
-            'target_date': target_date,
-        })
-    session['dday_items'] = normalized
-    return normalized
+        candidates.append((title, delta_days))
+
+    if not candidates:
+        return 'D-day 일정 없음'
+
+    title, nearest = min(candidates, key=lambda entry: entry[1])
+    if nearest == 0:
+        badge = 'D-Day'
+    else:
+        badge = f'D-{nearest}'
+
+    if title:
+        return f'{title} : {badge}'
+    return badge
+
+
+def get_dday_items(user_id):
+    try:
+        conn = get_db_conn()
+        ensure_app_tables(conn)
+        rows = conn.cursor().execute(
+            """
+            SELECT id, title, target_date
+            FROM dbo.study_plan_dday_items
+            WHERE user_id = ?
+            ORDER BY target_date, id
+            """,
+            (user_id,),
+        ).fetchall()
+        conn.close()
+
+        return [
+            {
+                'id': int(row[0]),
+                'title': str(row[1] or '').strip(),
+                'target_date': row[2].isoformat() if hasattr(row[2], 'isoformat') else str(row[2]),
+            }
+            for row in rows
+        ]
+    except Exception:
+        items = session.get('dday_items', [])
+        if not isinstance(items, list):
+            return []
+        normalized = []
+        for index, item in enumerate(items):
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get('title') or '').strip()
+            target_date = str(item.get('target_date') or '').strip()
+            if not title or not target_date:
+                continue
+            normalized.append({'id': item.get('id', index + 1), 'title': title, 'target_date': target_date})
+        session['dday_items'] = normalized
+        return normalized
+
+
+def create_dday_item(user_id, title, target_date):
+    conn = get_db_conn()
+    ensure_app_tables(conn)
+    conn.cursor().execute(
+        "INSERT INTO dbo.study_plan_dday_items (user_id, title, target_date) VALUES (?, ?, ?)",
+        (user_id, title, target_date),
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_dday_item_db(user_id, item_id):
+    conn = get_db_conn()
+    ensure_app_tables(conn)
+    conn.cursor().execute(
+        "DELETE FROM dbo.study_plan_dday_items WHERE user_id = ? AND id = ?",
+        (user_id, item_id),
+    )
+    conn.commit()
+    conn.close()
 
 
 @app.route('/dday', methods=['GET', 'POST'])
@@ -352,28 +588,34 @@ def dday_page():
         target_date = str(request.form.get('target_date') or '').strip()
 
         if title and target_date:
-            items = get_dday_items()
-            items.append({
-                'id': max((int(item.get('id', 0)) for item in items), default=0) + 1,
-                'title': title,
-                'target_date': target_date,
-            })
-            session['dday_items'] = items
+            try:
+                create_dday_item(session['user_id'], title, target_date)
+            except Exception:
+                items = get_dday_items(session['user_id'])
+                items.append({
+                    'id': max((int(item.get('id', 0)) for item in items), default=0) + 1,
+                    'title': title,
+                    'target_date': target_date,
+                })
+                session['dday_items'] = items
 
         return redirect(url_for('dday_page'))
 
-    items = get_dday_items()
+    items = get_dday_items(session['user_id'])
     today = date.today()
     processed = []
     for item in items:
-        target = datetime.strptime(item['target_date'], '%Y-%m-%d').date()
+        try:
+            target = datetime.strptime(item['target_date'], '%Y-%m-%d').date()
+        except Exception:
+            continue
         delta_days = (target - today).days
+        if delta_days < 0:
+            continue
         if delta_days == 0:
             badge = 'D-Day'
-        elif delta_days > 0:
-            badge = f'D-{delta_days}'
         else:
-            badge = f'D+{abs(delta_days)}'
+            badge = f'D-{delta_days}'
         processed.append({
             **item,
             'days_left': delta_days,
@@ -389,8 +631,11 @@ def delete_dday_item(item_id):
     if not session.get('user_id'):
         return redirect(url_for('index'))
 
-    items = get_dday_items()
-    session['dday_items'] = [item for item in items if int(item.get('id', 0)) != item_id]
+    try:
+        delete_dday_item_db(session['user_id'], item_id)
+    except Exception:
+        items = get_dday_items(session['user_id'])
+        session['dday_items'] = [item for item in items if int(item.get('id', 0)) != item_id]
     return redirect(url_for('dday_page'))
 
 
@@ -448,6 +693,7 @@ def parse_task_rows_from_text(raw_text):
 def get_plan_detail(plan_id):
     try:
         conn = get_db_conn()
+        ensure_app_tables(conn)
         plan = conn.cursor().execute(
             """
             SELECT plan_id, title, subject, user_id, image_url, color
@@ -462,7 +708,7 @@ def get_plan_detail(plan_id):
 
         tasks = conn.cursor().execute(
             """
-            SELECT task_id, plan_id, plan_date, task_title, order_no
+            SELECT task_id, plan_id, plan_date, task_title, order_no, ISNULL(task_status, N'진행중') AS task_status
             FROM dbo.study_plan_task
             WHERE plan_id = ?
             ORDER BY order_no, task_id
@@ -485,6 +731,7 @@ def get_plan_detail(plan_id):
                     'plan_date': row[2].isoformat() if hasattr(row[2], 'isoformat') else row[2],
                     'task_title': row[3],
                     'order_no': row[4],
+                    'task_status': row[5] or '진행중',
                 }
                 for row in tasks
             ],
@@ -553,21 +800,26 @@ def plan_edit(plan_id):
         task_ids = request.form.getlist('task_id')
         task_dates = request.form.getlist('task_date')
         task_titles = request.form.getlist('task_title')
+        task_statuses = request.form.getlist('task_status')
 
         try:
             conn = get_db_conn()
+            ensure_app_tables(conn)
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE dbo.study_plan SET title = ?, subject = ? WHERE plan_id = ?",
                 (title or detail['title'], subject or detail['subject'], plan_id),
             )
 
-            for task_id, plan_date, task_title in zip(task_ids, task_dates, task_titles):
+            for task_id, plan_date, task_title, task_status in zip(task_ids, task_dates, task_titles, task_statuses):
                 if not task_id:
                     continue
+                status_value = str(task_status or '진행중').strip()
+                if status_value not in {'완료', '진행중', '미완료'}:
+                    status_value = '진행중'
                 cursor.execute(
-                    "UPDATE dbo.study_plan_task SET plan_date = ?, task_title = ? WHERE task_id = ?",
-                    (plan_date or None, task_title or '', int(task_id)),
+                    "UPDATE dbo.study_plan_task SET plan_date = ?, task_title = ?, task_status = ? WHERE task_id = ?",
+                    (plan_date or None, task_title or '', status_value, int(task_id)),
                 )
 
             conn.commit()
@@ -585,14 +837,109 @@ def today_study():
     if not session.get('user_id'):
         return redirect(url_for('index'))
 
-    target_date = request.args.get('date') or date.today().isoformat()
+    raw_date = request.args.get('date') or ''
+    try:
+        selected_date = date.fromisoformat(str(raw_date).strip()) if raw_date else date.today()
+    except ValueError:
+        selected_date = date.today()
+
+    target_date = selected_date.isoformat()
+    prev_date = (selected_date - timedelta(days=1)).isoformat()
+    next_date = (selected_date + timedelta(days=1)).isoformat()
+    today_date = date.today().isoformat()
+
     tasks = get_today_tasks(session['user_id'], target_date)
     return render_template(
         'today_study.html',
         user_name=session.get('user_name', '사용자'),
         tasks=tasks,
         today_date=target_date,
+        prev_date=prev_date,
+        next_date=next_date,
+        current_today=today_date,
     )
+
+
+@app.route('/api/today-progress')
+def api_today_progress():
+    if not session.get('user_id'):
+        return jsonify({'ok': False, 'error': '로그인이 필요합니다.'}), 401
+
+    try:
+        progress = get_today_progress(int(session['user_id']))
+        return jsonify({'ok': True, **progress})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 500
+
+
+@app.route('/api/today-task-toggle', methods=['POST'])
+def today_task_toggle():
+    if not session.get('user_id'):
+        return jsonify({'ok': False, 'error': '로그인이 필요합니다.'}), 401
+
+    payload = request.get_json(silent=True) or {}
+    task_id_raw = payload.get('task_id')
+    plan_date = str(payload.get('plan_date') or '').strip()
+    is_completed = bool(payload.get('is_completed'))
+
+    if task_id_raw is None or not plan_date:
+        return jsonify({'ok': False, 'error': 'task_id와 plan_date가 필요합니다.'}), 400
+
+    try:
+        task_id = int(task_id_raw)
+    except Exception:
+        return jsonify({'ok': False, 'error': 'task_id 형식이 올바르지 않습니다.'}), 400
+
+    user_id = int(session['user_id'])
+
+    try:
+        conn = get_db_conn()
+        ensure_app_tables(conn)
+        cursor = conn.cursor()
+
+        owner_row = cursor.execute(
+            """
+            SELECT TOP 1 sp.user_id
+            FROM dbo.study_plan_task st
+            INNER JOIN dbo.study_plan sp ON sp.plan_id = st.plan_id
+            WHERE st.task_id = ? AND CAST(st.plan_date AS date) = ?
+            """,
+            (task_id, plan_date),
+        ).fetchone()
+
+        if not owner_row or int(owner_row[0]) != user_id:
+            conn.close()
+            return jsonify({'ok': False, 'error': '권한이 없거나 존재하지 않는 작업입니다.'}), 403
+
+        if is_completed:
+            cursor.execute(
+                """
+                MERGE dbo.study_plan_task_completion AS target
+                USING (SELECT ? AS user_id, ? AS task_id, ? AS completed_date) AS src
+                    ON target.user_id = src.user_id
+                   AND target.task_id = src.task_id
+                   AND target.completed_date = src.completed_date
+                WHEN NOT MATCHED THEN
+                    INSERT (user_id, task_id, completed_date)
+                    VALUES (src.user_id, src.task_id, src.completed_date);
+                """,
+                (user_id, task_id, plan_date),
+            )
+        else:
+            cursor.execute(
+                "DELETE FROM dbo.study_plan_task_completion WHERE user_id = ? AND task_id = ? AND completed_date = ?",
+                (user_id, task_id, plan_date),
+            )
+
+        conn.commit()
+        conn.close()
+        return jsonify({'ok': True})
+    except Exception as exc:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return jsonify({'ok': False, 'error': str(exc)}), 500
 
 
 @app.route('/admin')
@@ -600,8 +947,16 @@ def admin():
     return render_template('admin.html', data=load_data())
 
 
+@app.route('/wrong-note')
+def wrong_note_page():
+    return redirect('https://wrongnoteflask.onrender.com/')
+
+
 @app.route('/api/create-study-plan', methods=['POST'])
 def create_study_plan():
+    if not session.get('user_id'):
+        return jsonify({'ok': False, 'error': '로그인이 필요합니다.'}), 401
+
     payload = request.get_json(silent=True) or {}
 
     title = str(payload.get('title') or '').strip()
@@ -631,7 +986,7 @@ def create_study_plan():
         cursor = conn.cursor()
 
         table_columns = get_table_columns(conn, 'study_plan')
-        user_id = get_or_create_user_id(conn)
+        user_id = int(session['user_id'])
 
         columns = []
         values = []

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>오답노트</title>
+  <style>
+    :root {
+      --bg: #f3f5f8;
+      --ink: #1f2430;
+      --muted: #5f697a;
+      --line: rgba(148, 163, 184, 0.7);
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+      color: var(--ink);
+    }
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 0;
+    }
+    .phone {
+      width: 100%;
+      max-width: 430px;
+      min-height: 100vh;
+      background: #f5f6f9;
+      padding: 14px 14px 24px;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 2px 12px;
+    }
+    .back {
+      text-decoration: none;
+      color: var(--ink);
+      font-size: 34px;
+      line-height: 1;
+      font-weight: 700;
+    }
+    .title {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: -0.05em;
+      font-weight: 900;
+      flex: 1;
+      text-align: center;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #edf3f9;
+      padding: 20px 16px;
+      text-align: center;
+    }
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 900;
+    }
+    .panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.6;
+    }
+    .tabbar {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      background: rgba(255,255,255,0.92);
+      border-top: 1px solid rgba(17,24,39,0.05);
+      padding: 10px 10px 14px;
+      margin-top: 18px;
+      border-radius: 14px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    }
+    .tab {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 7px;
+      color: #6b7280;
+      font-size: 12px;
+      font-weight: 800;
+      text-decoration: none;
+      padding: 6px 2px;
+      border-radius: 10px;
+    }
+    .tab .emoji,
+    .tab svg {
+      width: 21px;
+      height: 21px;
+      stroke-width: 2.2;
+    }
+    .tab.active {
+      color: #1e4e8a;
+      background: rgba(37, 99, 235, 0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="topbar">
+      <a class="back" href="/dashboard" aria-label="뒤로가기">‹</a>
+      <h1 class="title">오답노트</h1>
+      <div style="width: 28px;"></div>
+    </div>
+
+    <section class="panel">
+      <h2>{{ user_name }}님의 오답노트</h2>
+      <p>오답노트 기능은 다음 단계에서 연결됩니다.<br>현재는 메뉴 버튼이 정상 연결된 상태입니다.</p>
+    </section>
+
+    <nav class="tabbar" aria-label="하단 메뉴">
+      <a class="tab" href="/dashboard"><i class="emoji" data-lucide="house"></i><span>HOME</span></a>
+      <a class="tab" href="/dashboard"><i class="emoji" data-lucide="folder"></i><span>새계획</span></a>
+      <a class="tab active" href="/wrong-note"><i class="emoji" data-lucide="notebook-pen"></i><span>오답노트</span></a>
+      <a class="tab" href="/dday"><i class="emoji" data-lucide="calendar"></i><span>D-day</span></a>
+      <a class="tab" href="/dashboard"><i class="emoji" data-lucide="user"></i><span>MY</span></a>
+    </nav>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  </script>
+</body>
+</html>
