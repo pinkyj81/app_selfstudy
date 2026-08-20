@@ -407,14 +407,18 @@
       <p class="print-period">기간: {{ print_start if print_start else '시작일' }} ~ {{ print_end if print_end else '종료일' }}</p>
     </div>
 
+    {% set total_tasks = plan.tasks | length %}
+    {% set completed_tasks = plan.tasks | selectattr('task_status', 'equalto', '완료') | list | length %}
+    {% set completion_percent = ((completed_tasks * 100 / total_tasks) | round(0, 'common') | int) if total_tasks > 0 else 0 %}
+
     <div class="summary-box">
       <div class="subject-row">
         <div class="subject-label">{{ plan.subject }}</div>
-        <div class="percent">50%</div>
+        <div class="percent">{{ completion_percent }}%</div>
       </div>
       <div class="toolbar">
         <div class="mini">{{ plan.title }}</div>
-        <div class="chip">2/4 완료</div>
+        <div class="chip">{{ completed_tasks }}/{{ total_tasks }} 완료</div>
       </div>
       <div class="small-btns">
         <button class="btn green" type="button">+ 행 추가</button>
@@ -429,7 +433,7 @@
           <div class="label" style="font-size: 14px;">텍스트 붙여넣기</div>
           <button class="btn blue" type="submit" style="flex: 0 0 auto; width: auto; padding: 0 16px; height: 34px; font-size: 14px;">파싱</button>
         </div>
-        <textarea name="paste_text" rows="5" placeholder="예:&#10;2026-08-12  기초 개념 정리&#10;2026-08-13  문제집 3장 풀기&#10;2026-08-14  영어 단어 암기" style="width:100%; resize:vertical; border:1px solid var(--border); border-radius:10px; padding:10px; font-size:13px; background:#f8fafc; color:var(--text);"></textarea>
+        <textarea name="paste_text" rows="5" placeholder="예:&#10;1 기초 개념 정리&#10;2 문제집 3장 풀기 | https://example.com/chapter3&#10;3 영어 단어 암기 | youtube.com/watch?v=abcd" style="width:100%; resize:vertical; border:1px solid var(--border); border-radius:10px; padding:10px; font-size:13px; background:#f8fafc; color:var(--text);"></textarea>
       </div>
     </form>
 
@@ -450,6 +454,8 @@
                 <td>{{ loop.index }}</td>
                 <td>
                   <input type="hidden" name="task_id" value="{{ task.task_id }}" />
+                  <input type="hidden" name="task_order" value="{{ task.order_no if task.order_no else loop.index }}" />
+                  <input type="hidden" name="task_link" value="{{ task.link_url if task.link_url else '' }}" />
                   <input class="date-cell" type="date" name="task_date" value="{{ task.plan_date }}" style="font-size:12px;" />
                 </td>
                 <td>

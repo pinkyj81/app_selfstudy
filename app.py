@@ -302,7 +302,10 @@ def get_user_subjects(user_id):
             INNER JOIN dbo.study_plan_task st
                 ON st.plan_id = sp.plan_id
                AND CAST(st.plan_date AS date) >= CAST(GETDATE() AS date)
-            LEFT JOIN dbo.study_plan_task_completion tc
+            LEFT JOIN (
+                SELECT DISTINCT user_id, task_id, completed_date
+                FROM dbo.study_plan_task_completion
+            ) tc
                 ON tc.user_id = sp.user_id
                AND tc.task_id = st.task_id
                AND tc.completed_date = CAST(st.plan_date AS date)
@@ -321,6 +324,8 @@ def get_user_subjects(user_id):
             subject_name = (subject_name or '').strip()
             if not subject_name:
                 continue
+            plan_total = int(total_tasks or 0)
+            plan_completed = int(completed_tasks or 0)
             entry = grouped.setdefault(subject_name, {
                 'name': subject_name,
                 'titles': [],
@@ -329,12 +334,14 @@ def get_user_subjects(user_id):
                 'completed_tasks': 0,
             })
             entry['plan_count'] += 1
-            entry['total_tasks'] += int(total_tasks or 0)
-            entry['completed_tasks'] += int(completed_tasks or 0)
-            if title:
-                seen = {item['title'] for item in entry['titles']}
-                if title not in seen:
-                    entry['titles'].append({'title': title, 'plan_id': int(plan_id)})
+            entry['total_tasks'] += plan_total
+            entry['completed_tasks'] += plan_completed
+            entry['titles'].append({
+                'title': title or '무제',
+                'plan_id': int(plan_id),
+                'completed_count': plan_completed,
+                'total_count': plan_total,
+            })
 
         subjects = []
         for subject_name, entry in grouped.items():
@@ -657,35 +664,48 @@ def parse_task_rows_from_text(raw_text):
     if raw_text is None:
         return []
 
+    url_pattern = re.compile(r'(https?://\S+|www\.\S+|\S+\.com\S*|\S+\.net\S*|\S+\.org\S*|\S+\.co\.kr\S*|\S+\.kr\S*)', re.IGNORECASE)
     rows = []
+    next_auto_order = 1
     for line in str(raw_text).splitlines():
         text = line.strip()
         if not text:
             continue
 
-        pattern = r'(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})'
-        match = re.search(pattern, text)
-        if not match:
-            continue
+        # Format: "1 학습 내용 | https://..." (link part is optional)
+        body, sep, link_part = text.partition('|')
+        link_url = link_part.strip() if sep else ''
+        body = body.strip()
 
-        date_value = normalize_date_value(match.group(1))
-        if not date_value:
-            continue
+        order_no = None
+        title = ''
+        numbered = re.match(r'^(\d+)\s*[\).:\-]?\s*(.+)$', body)
+        if numbered:
+            try:
+                order_no = int(numbered.group(1))
+            except Exception:
+                order_no = None
+            title = numbered.group(2).strip()
+        else:
+            title = re.sub(r'^[-*•]\s*', '', body).strip()
+            order_no = next_auto_order
 
-        title = text[:match.start()].strip()
+        if not link_url:
+            found_url = url_pattern.search(title)
+            if found_url:
+                link_url = found_url.group(1).strip()
+                title = (title[:found_url.start()] + ' ' + title[found_url.end():]).strip()
+                title = re.sub(r'\s{2,}', ' ', title)
+
         if not title:
-            remainder = text[match.end():].strip()
-            if remainder:
-                title = remainder
-            else:
-                parts = [p.strip() for p in re.split(r'[\t|,]+', text) if p.strip()]
-                if len(parts) >= 2:
-                    title = ' '.join(parts[1:]).strip()
-
-        if not title:
             continue
 
-        rows.append((date_value, title))
+        rows.append({
+            'order_no': int(order_no or next_auto_order),
+            'task_title': title,
+            'link_url': link_url,
+        })
+        next_auto_order = max(next_auto_order, int(order_no or next_auto_order) + 1)
 
     return rows
 
@@ -754,33 +774,77 @@ def plan_parse(plan_id):
     if not parsed_rows:
         return redirect(url_for('plan_edit', plan_id=plan_id))
 
-    try:
-        conn = get_db_conn()
-        cursor = conn.cursor()
-        existing_dates = set(
-            row[0] for row in cursor.execute(
-                "SELECT plan_date FROM dbo.study_plan_task WHERE plan_id = ?",
-                (plan_id,),
-            ).fetchall()
-        )
-
-        for order_no, (plan_date, task_title) in enumerate(parsed_rows, start=1):
-            if str(plan_date) in {str(existing_date) for existing_date in existing_dates}:
-                continue
-            cursor.execute(
-                "INSERT INTO dbo.study_plan_task (plan_id, plan_date, task_title, order_no, created_at) VALUES (?, ?, ?, ?, SYSDATETIMEOFFSET())",
-                (plan_id, plan_date, task_title, order_no),
-            )
-            existing_dates.add(str(plan_date))
-
-        conn.commit()
-        conn.close()
-    except Exception:
+    existing_order_dates = {}
+    max_order = 0
+    for task in detail.get('tasks', []):
+        order_no = task.get('order_no')
         try:
-            conn.rollback()
+            order_no_int = int(order_no)
         except Exception:
-            pass
-        return redirect(url_for('plan_edit', plan_id=plan_id))
+            order_no_int = 0
+        if order_no_int > max_order:
+            max_order = order_no_int
+
+        plan_date_raw = task.get('plan_date')
+        normalized = normalize_date_value(plan_date_raw)
+        if normalized:
+            try:
+                if order_no_int > 0:
+                    existing_order_dates[order_no_int] = datetime.strptime(normalized, '%Y-%m-%d').date()
+            except Exception:
+                pass
+
+    def suggest_plan_date(order_no_value: int) -> str:
+        if order_no_value in existing_order_dates:
+            return existing_order_dates[order_no_value].isoformat()
+
+        lower_orders = [o for o in existing_order_dates.keys() if o < order_no_value]
+        upper_orders = [o for o in existing_order_dates.keys() if o > order_no_value]
+
+        if lower_orders:
+            prev_order = max(lower_orders)
+            prev_date = existing_order_dates[prev_order]
+            gap = max(1, order_no_value - prev_order)
+            return (prev_date + timedelta(days=gap)).isoformat()
+
+        if upper_orders:
+            next_order = min(upper_orders)
+            next_date = existing_order_dates[next_order]
+            gap = max(1, next_order - order_no_value)
+            return (next_date - timedelta(days=gap)).isoformat()
+
+        return date.today().isoformat()
+
+    staged_rows = []
+    sorted_rows = sorted(parsed_rows, key=lambda item: int(item.get('order_no') or 0))
+    for idx, row in enumerate(sorted_rows):
+        order_no = int(row.get('order_no') or 0)
+        if order_no <= 0:
+            order_no = max_order + idx + 1
+
+        task_title = str(row.get('task_title') or '').strip()
+        if not task_title:
+            continue
+
+        plan_date = suggest_plan_date(order_no)
+        staged_rows.append({
+            'order_no': order_no,
+            'task_title': task_title,
+            'plan_date': plan_date,
+            'task_status': '진행중',
+            'link_url': str(row.get('link_url') or '').strip(),
+        })
+
+    replace_range = None
+    if staged_rows:
+        order_values = [int(row.get('order_no') or 0) for row in staged_rows if int(row.get('order_no') or 0) > 0]
+        if order_values:
+            replace_range = [min(order_values), max(order_values)]
+
+    session[f'plan_parse_preview_{plan_id}'] = {
+        'rows': staged_rows,
+        'replace_range': replace_range,
+    }
 
     return redirect(url_for('plan_edit', plan_id=plan_id))
 
@@ -801,33 +865,160 @@ def plan_edit(plan_id):
         task_dates = request.form.getlist('task_date')
         task_titles = request.form.getlist('task_title')
         task_statuses = request.form.getlist('task_status')
+        task_orders = request.form.getlist('task_order')
+        task_links = request.form.getlist('task_link')
 
         try:
             conn = get_db_conn()
             ensure_app_tables(conn)
             cursor = conn.cursor()
+            task_columns = get_table_columns(conn, 'study_plan_task')
+
+            existing_task_ids = {
+                int(row[0])
+                for row in cursor.execute(
+                    "SELECT task_id FROM dbo.study_plan_task WHERE plan_id = ?",
+                    (plan_id,),
+                ).fetchall()
+                if row[0] is not None
+            }
+            submitted_task_ids = {
+                int(task_id)
+                for task_id in task_ids
+                if str(task_id or '').strip()
+            }
+            removed_task_ids = sorted(existing_task_ids - submitted_task_ids)
+
+            for removed_task_id in removed_task_ids:
+                cursor.execute(
+                    "DELETE FROM dbo.study_plan_task_completion WHERE task_id = ?",
+                    (removed_task_id,),
+                )
+                cursor.execute(
+                    "DELETE FROM dbo.study_plan_task WHERE task_id = ?",
+                    (removed_task_id,),
+                )
+
             cursor.execute(
                 "UPDATE dbo.study_plan SET title = ?, subject = ? WHERE plan_id = ?",
                 (title or detail['title'], subject or detail['subject'], plan_id),
             )
 
-            for task_id, plan_date, task_title, task_status in zip(task_ids, task_dates, task_titles, task_statuses):
-                if not task_id:
-                    continue
+            for idx, (task_id, plan_date, task_title, task_status, task_order, task_link) in enumerate(zip(task_ids, task_dates, task_titles, task_statuses, task_orders, task_links), start=1):
                 status_value = str(task_status or '진행중').strip()
                 if status_value not in {'완료', '진행중', '미완료'}:
                     status_value = '진행중'
-                cursor.execute(
-                    "UPDATE dbo.study_plan_task SET plan_date = ?, task_title = ?, task_status = ? WHERE task_id = ?",
-                    (plan_date or None, task_title or '', status_value, int(task_id)),
-                )
+                order_value = idx
+                title_value = str(task_title or '').strip()
+                link_value = str(task_link or '').strip()
+
+                if not task_id:
+                    if not title_value:
+                        continue
+                    if 'link_url' in task_columns:
+                        cursor.execute(
+                            "INSERT INTO dbo.study_plan_task (plan_id, plan_date, task_title, order_no, task_status, link_url, created_at) VALUES (?, ?, ?, ?, ?, ?, SYSDATETIMEOFFSET())",
+                            (plan_id, plan_date or None, title_value, order_value, status_value, link_value or None),
+                        )
+                    else:
+                        cursor.execute(
+                            "INSERT INTO dbo.study_plan_task (plan_id, plan_date, task_title, order_no, task_status, created_at) VALUES (?, ?, ?, ?, ?, SYSDATETIMEOFFSET())",
+                            (plan_id, plan_date or None, title_value, order_value, status_value),
+                        )
+                    continue
+
+                if 'link_url' in task_columns:
+                    cursor.execute(
+                        "UPDATE dbo.study_plan_task SET plan_date = ?, task_title = ?, task_status = ?, order_no = ?, link_url = ? WHERE task_id = ?",
+                        (plan_date or None, title_value, status_value, order_value, link_value or None, int(task_id)),
+                    )
+                else:
+                    cursor.execute(
+                        "UPDATE dbo.study_plan_task SET plan_date = ?, task_title = ?, task_status = ?, order_no = ? WHERE task_id = ?",
+                        (plan_date or None, title_value, status_value, order_value, int(task_id)),
+                    )
 
             conn.commit()
             conn.close()
+            session.pop(f'plan_parse_preview_{plan_id}', None)
         except Exception:
             return redirect(url_for('dashboard'))
 
         return redirect(url_for('dashboard'))
+
+    preview_payload = session.get(f'plan_parse_preview_{plan_id}') or {}
+    if isinstance(preview_payload, list):
+        preview_rows = preview_payload
+        replace_range = None
+    else:
+        preview_rows = preview_payload.get('rows') or []
+        replace_range = preview_payload.get('replace_range')
+
+    if preview_rows:
+        parsed_order_set = set()
+        for row in preview_rows:
+            try:
+                order_value = int(row.get('order_no') or 0)
+            except Exception:
+                order_value = 0
+            if order_value > 0:
+                parsed_order_set.add(order_value)
+
+        range_min = None
+        range_max = None
+        if isinstance(replace_range, list) and len(replace_range) == 2:
+            try:
+                range_min = int(replace_range[0])
+                range_max = int(replace_range[1])
+            except Exception:
+                range_min = None
+                range_max = None
+
+        merged_by_order = {}
+        for task in detail.get('tasks', []):
+            row = dict(task)
+            row['task_id'] = row.get('task_id') or ''
+            row['link_url'] = row.get('link_url') or ''
+            try:
+                key = int(row.get('order_no') or 0)
+            except Exception:
+                key = 0
+            if key > 0:
+                if (
+                    range_min is not None
+                    and range_max is not None
+                    and range_min <= key <= range_max
+                    and key not in parsed_order_set
+                ):
+                    continue
+                merged_by_order[key] = row
+
+        for row in preview_rows:
+            try:
+                key = int(row.get('order_no') or 0)
+            except Exception:
+                key = 0
+            if key <= 0:
+                continue
+
+            task = merged_by_order.get(key)
+            if task:
+                task['task_title'] = str(row.get('task_title') or task.get('task_title') or '')
+                task['task_status'] = str(row.get('task_status') or task.get('task_status') or '진행중')
+                task['link_url'] = str(row.get('link_url') or task.get('link_url') or '')
+                continue
+
+            merged_by_order[key] = {
+                'task_id': '',
+                'plan_id': plan_id,
+                'plan_date': str(row.get('plan_date') or ''),
+                'task_title': str(row.get('task_title') or ''),
+                'order_no': key,
+                'task_status': str(row.get('task_status') or '진행중'),
+                'link_url': str(row.get('link_url') or ''),
+            }
+
+        detail['tasks'] = [merged_by_order[k] for k in sorted(merged_by_order.keys())]
 
     return render_template('plan_edit.html', plan=detail)
 

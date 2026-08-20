@@ -646,7 +646,7 @@
                   {% for title in subject.titles %}
                     <a href="/plan/{{ title.plan_id }}/edit" class="title-item" style="text-decoration:none;">
                       <span class="title-name">{{ title.title }}</span>
-                      <span class="title-percent">{{ subject.completed_count }}/{{ subject.total_count }}</span>
+                      <span class="title-percent">{{ title.completed_count }}/{{ title.total_count }}</span>
                     </a>
                   {% endfor %}
                 </div>
